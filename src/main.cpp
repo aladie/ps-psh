@@ -24,18 +24,17 @@ void main() {
         PS::TcpClient client = server.accept();
 
         // Send messages
-        client.printf("Welcome to PS-PSH! v0.1.0\r\n");
-        client.printf("Twitter: twitter.com/aladie11\r\n");
-        client.printf("\r\n");
+        client.printf("Welcome to PS-PSH! v0.1.1\r\n");
+        client.printf("Twitter: twitter.com/aladie11\r\n\r\n");
 
         //Set initial directory
-        char directory[128] = "/";
+        char directory[256] = "/";
 
         // Receive message
         char buffer[2] = "";
-        char buildCommand[128] = "";
-        char buildParam1[128] = "";
-        char buildParam2[128] = "";
+        char buildCommand[256] = "";
+        char buildParam1[256] = "";
+        char buildParam2[256] = "";
         int selectBuild = 0;
         bool cleanTask = false;
         bool part1 = false;
@@ -46,6 +45,7 @@ void main() {
         client.printf(" $");
 
         while (client.isConnected()) {
+            //Reset the stored commands and parameters after any command
             if (cleanTask) {
                 memset(buildCommand, 0, sizeof(buildCommand));
                 memset(buildParam1, 0, sizeof(buildParam1));
@@ -88,6 +88,8 @@ void main() {
                             Execute::cp(client, directory, buildParam1, buildParam2);
                         } else if (PS2::strcmp(buildCommand, "mv") == 0) {
                             Execute::mv(client, directory, buildParam1, buildParam2);
+                        } else if (PS2::strcmp(buildCommand, "mkdir") == 0) {
+                            Execute::mkdir(client, directory, buildParam1);
                         } else if (PS2::strcmp(buildCommand, "help") == 0) {
                             Execute::help(client);
                         } else if (PS2::strcmp(buildCommand, "exit") == 0) {

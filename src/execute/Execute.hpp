@@ -14,7 +14,8 @@ public:
     static void play(PS::TcpClient client, const char *directory, const char *filepath, const char *configpath);
     static void pwd(PS::TcpClient client, const char *directory);
     static void rm(PS::TcpClient client, const char *directory, const char *filepath);
-    static void cd(PS::TcpClient client, char directory[128], char new_directory[128]);
+    static void mkdir(PS::TcpClient client, const char *directory, const char *filepath);
+    static void cd(PS::TcpClient client, char directory[256], char new_directory[256]);
     static void cp(PS::TcpClient client, const char *directory, const char *source, const char *dest);
     static void mv(PS::TcpClient client, const char *directory, const char *source, const char *dest);
     static void help(PS::TcpClient client);

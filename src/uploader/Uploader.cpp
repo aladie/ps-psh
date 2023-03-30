@@ -6,7 +6,7 @@ bool Uploader::upload(const char *filepath, uint16_t port) {
     if (!server.listen(port))
         return false;
 
-    // Waiting for game file dialog
+    // Waiting for client connection dialog
     PS::Sce::MsgDialog::Initialize();
     PS::Sce::MsgDialogUserMessage waitingDialog = PS::Sce::MsgDialogUserMessage("Waiting for client connection...",
                                                                                 PS::Sce::MsgDialog::ButtonType::NONE);
@@ -21,6 +21,15 @@ bool Uploader::upload(const char *filepath, uint16_t port) {
     // Get the filesize
     size_t filesize = PS::Filesystem::getFileSize(filepath);
 
+    // Get and send filename
+    int pointer = 0;
+    char filename[128] = "";
+    for (int i = PS2::lastIndexOf(filepath, '/') + 1; i < PS2::strlen(filepath); i++) {
+        filename[pointer] = filepath[i];
+        pointer++;
+    }
+    client.send(filename, PS2::strlen(filename));
+
     // Create the file chunk buffer and total send offset
     size_t bufferSize = UPLOAD_CHUNK_SIZE;
     size_t offset = 0;
@@ -31,8 +40,11 @@ bool Uploader::upload(const char *filepath, uint16_t port) {
     PS::Sce::MsgDialog::Terminate();
 
     // Show progress bar dialog
+    char message[141] = "Uploading ";
+    PS2::strcat(message, filename);
+    PS2::strcat(message, "...");
     PS::Sce::MsgDialog::Initialize();
-    PS::Sce::MsgDialogProgressBar progressDialog = PS::Sce::MsgDialogProgressBar("Uploading file...");
+    PS::Sce::MsgDialogProgressBar progressDialog = PS::Sce::MsgDialogProgressBar(message);
     progressDialog.open();
     Uploader::setProgress(progressDialog, 0, filesize);
 

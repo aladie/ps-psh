@@ -16,15 +16,15 @@ void Execute::ls(PS::TcpClient client, const char *directory) {
 
             while (dent->d_fileno) {
 
-                if (dent->d_type == DT_DIR)
-                    client.printf("d %s%s\r\n", directory, dent->d_name);
-                if (dent->d_type == DT_REG)
-                    client.printf("- %s%s\r\n", directory, dent->d_name);
                 if (dent->d_reclen == 0)
                     break;
                 nread -= dent->d_reclen;
                 if (nread < 0)
                     break;
+                if (dent->d_type == DT_DIR)
+                    client.printf("d %s%s\r\n", directory, dent->d_name);
+                if (dent->d_type == DT_REG)
+                    client.printf("- %s%s\r\n", directory, dent->d_name);
                 dent = (struct dirent *) ((char *) dent + dent->d_reclen);
 
             }
@@ -75,10 +75,11 @@ void Execute::upload(PS::TcpClient client, const char *directory, const char *fi
 
             //Check if file is there
             if (Helper::isValidMultipleDirectoryFile(directory, filepath) == 0) {
-                client.printf("There was an error while downloading the file.\r\nMaybe the destination directory is read only?\r\n");
+                client.printf(
+                        "There was an error while downloading the file.\r\nMaybe the destination directory is read only?\r\n");
             }
         } else {
-            client.printf("No such file: ");
+            client.printf("Not a valid file location/filename: ");
             client.printf(filepath);
             client.printf("\r\n");
         }
@@ -104,7 +105,8 @@ void Execute::download(PS::TcpClient client, const char *directory, const char *
 
         //Continue if filepath was valid
         if (PS2::strcmp(temp, "") != 0) {
-            client.printf("Connect and download the file with the \"PS-PSH File Receiver\"\r\nOr use your own tool on the TCP port 9045");
+            client.printf(
+                    "Connect and download the file with the \"PS-PSH File Receiver\"\r\nOr use your own tool on the TCP port 9045");
             client.printf("\r\n");
 
             //Download file
@@ -123,7 +125,8 @@ void Execute::download(PS::TcpClient client, const char *directory, const char *
 void Execute::play(PS::TcpClient client, const char *directory, const char *filepath, const char *configpath) {
     if (PS2::strcmp(filepath, "") == 0) {
         //Print help for play
-        client.printf("Syntax: play \"Filepath/name here e.g. /av_contents/content_tmp/disc01.iso\" \"(Optional) Config filepath/name here e.g. /av_contents/content_tmp/game.conf\"\r\n");
+        client.printf(
+                "Syntax: play \"Filepath/name here e.g. /av_contents/content_tmp/disc01.iso\" \"(Optional) Config filepath/name here e.g. /av_contents/content_tmp/game.conf\"\r\n");
     } else {
         char temp[128] = "";
         char temp_conf[128] = "";
@@ -172,30 +175,106 @@ void Execute::pwd(PS::TcpClient client, const char *directory) {
 void Execute::rm(PS::TcpClient client, const char *directory, const char *filepath) {
     if (PS2::strcmp(filepath, "") == 0) {
         //Print help for rm
-        client.printf("Syntax: rm \"Filepath/name here\"\r\n");
+        client.printf("Syntax: rm \"Filepath/name or Directory path/name here\"\r\n");
     } else {
         char temp[128] = "";
+        bool isFile = false;
 
         //Validate filepath
-        if (Helper::isValidMultipleDirectoryFile(directory, filepath) == 1) {
-            //Build temp filepath
-            PS2::strcat(temp, directory);
-            PS2::strcat(temp, filepath);
-        } else if (Helper::isValidMultipleDirectoryFile(directory, filepath) == 2) {
-            //Build temp filepath
-            PS2::strcat(temp, filepath);
+        switch (Helper::isValidMultipleDirectoryFile(directory, filepath)) {
+            case 1:
+                //Build temp filepath
+                PS2::strcat(temp, directory);
+                PS2::strcat(temp, filepath);
+                isFile = true;
+                break;
+            case 2:
+                //Build temp filepath
+                PS2::strcat(temp, filepath);
+                isFile = true;
+                break;
+            default:
+                switch (Helper::isValidMultipleDirectoryDirectory(directory, filepath)) {
+                    case 1:
+                        //Build temp filepath
+                        PS2::strcat(temp, directory);
+                        PS2::strcat(temp, filepath);
+                        break;
+                    case 2:
+                        //Build temp filepath
+                        PS2::strcat(temp, filepath);
+                        break;
+                }
         }
 
         //Continue if filepath was valid
         if (PS2::strcmp(temp, "") != 0) {
-            PS::unlink(temp);
-            client.printf("Successfully deleted the file: ");
-            client.printf(temp);
-            client.printf("\r\n");
+            //Check if the path is a file
+            if (isFile) {
+                PS::unlink(temp);
+
+                //Check if the operation was successfull
+                if (Helper::isValidMultipleDirectoryFile(directory, filepath) != 0)
+                    client.printf("There was an error while deleting the file.\r\nMaybe the file is read only?\r\n");
+                else {
+                    client.printf("Successfully deleted the file: ");
+                    client.printf(temp);
+                    client.printf("\r\n");
+                }
+            } else {
+                PS::rmdir(temp);
+
+                //Check if the operation was successfull
+                if (Helper::isValidMultipleDirectoryDirectory(directory, filepath) != 0)
+                    client.printf("There was an error while deleting the directory.\r\nMaybe the directory is read only?\r\n");
+                else {
+                    client.printf("Successfully deleted the directory: ");
+                    client.printf(temp);
+                    client.printf("\r\n");
+                }
+            }
         } else {
-            client.printf("No such file: ");
+            client.printf("No such file or directory: ");
             client.printf(filepath);
             client.printf("\r\n");
+        }
+    }
+}
+
+void Execute::mkdir(PS::TcpClient client, const char *directory, const char *dirpath) {
+    if (PS2::strcmp(dirpath, "") == 0) {
+        //Print help for mkdir
+        client.printf("Syntax: mkdir \"New directory path/name here\"\r\n");
+    } else {
+        char temp[512] = "";
+
+        //Test given destination path
+        //Helper::isValidMultipleDirectoryCreatableFile can be used since it would be the same algorithm
+        switch (Helper::isValidMultipleDirectoryCreatableFile(directory, dirpath)) {
+            case 1:
+                //Build destination directory path
+                PS2::strcat(temp, directory);
+                PS2::strcat(temp, dirpath);
+                break;
+            case 2:
+                //Build destination filepath
+                PS2::strcat(temp, dirpath);
+                break;
+        }
+
+        //Continue if new directory path was valid
+        if (PS2::strcmp(temp, "") != 0) {
+            //Create new directory
+            PS::mkdir(temp, 0777);
+
+            //Check if the operation was successfull
+            if (Helper::isValidMultipleDirectoryDirectory(directory, temp) == 0) {
+                client.printf("There was an error while creating the directory.\r\nMaybe the destination directory is read only?\r\n");
+            } else {
+                client.printf("The directory was successfully created!\r\n");
+            }
+        } else {
+            client.printf("Either the directory already exists or your given path is not valid!\r\n");
         }
     }
 }
@@ -203,92 +282,121 @@ void Execute::rm(PS::TcpClient client, const char *directory, const char *filepa
 void Execute::cp(PS::TcpClient client, const char *directory, const char *source, const char *dest) {
     if (PS2::strcmp(source, "") == 0 || PS2::strcmp(dest, "") == 0) {
         //Print help for cp
-        client.printf("Syntax: cp \"Source filepath/name here\" \"Destination filepath/name here\"\r\n");
+        client.printf("Syntax: cp \"Source filepath/directory\" \"Destination filepath/directory\"\r\n");
     } else {
-        char filepath_src[256] = "";
-        char filepath_dst[256] = "";
+        char filepath_src[512] = "";
+        bool src_isFile = false;
+        char filepath_dst[512] = "";
+        bool dst_isFile = false;
 
         //Test given source path
-        if (Helper::isValidMultipleDirectoryFile(directory, source) == 1) {
-            //Build source filepath
-            PS2::strcat(filepath_src, directory);
-            PS2::strcat(filepath_src, source);
-        } else if (Helper::isValidMultipleDirectoryFile(directory, source) == 2) {
-            //Build source filepath
-            PS2::strcat(filepath_src, source);
+        switch (Helper::isValidMultipleDirectoryFile(directory, source)) {
+            case 1:
+                //Build source filepath
+                PS2::strcat(filepath_src, directory);
+                PS2::strcat(filepath_src, source);
+                src_isFile = true;
+                break;
+            case 2:
+                //Build source filepath
+                PS2::strcat(filepath_src, source);
+                src_isFile = true;
+                break;
+            case 0:
+                //Test if given source is a directory
+                switch (Helper::isValidMultipleDirectoryDirectory(directory, source)) {
+                    case 1:
+                        //Build source directory
+                        PS2::strcat(filepath_src, directory);
+                        PS2::strcat(filepath_src, source);
+                        break;
+                    case 2:
+                        //Build source directory
+                        PS2::strcat(filepath_src, source);
+                        break;
+                }
+                break;
         }
 
         //Test given destination path
-        if (Helper::isValidMultipleDirectoryCreatableFile(directory, dest) == 1) {
-            //Build destination filepath
-            PS2::strcat(filepath_dst, directory);
-            PS2::strcat(filepath_dst, dest);
-        } else if (Helper::isValidMultipleDirectoryCreatableFile(directory, dest) == 2) {
-            //Build destination filepath
-            PS2::strcat(filepath_dst, dest);
+        switch (Helper::isValidMultipleDirectoryCreatableFile(directory, dest)) {
+            case 1:
+                //Build destination filepath
+                PS2::strcat(filepath_dst, directory);
+                PS2::strcat(filepath_dst, dest);
+                dst_isFile = true;
+                break;
+            case 2:
+                //Build destination filepath
+                PS2::strcat(filepath_dst, dest);
+                dst_isFile = true;
+                break;
+            case 0:
+                //Test if given destination is a directory
+                switch (Helper::isValidMultipleDirectoryDirectory(directory, dest)) {
+                    case 1:
+                        //Build destination directory
+                        PS2::strcat(filepath_dst, directory);
+                        PS2::strcat(filepath_dst, dest);
+                        break;
+                    case 2:
+                        //Build destination directory
+                        PS2::strcat(filepath_dst, dest);
+                        break;
+                }
+                break;
         }
 
-        //Continue if the source and destination paths are valid
+        //Validate given source and destination combination
         if (PS2::strcmp(filepath_src, "") != 0) {
             if (PS2::strcmp(filepath_dst, "") != 0) {
-                size_t filesize = PS::Filesystem::getFileSize(filepath_src);
 
-                // Show progress bar dialog
-                PS::Sce::MsgDialog::Initialize();
-                PS::Sce::MsgDialogProgressBar progressDialog = PS::Sce::MsgDialogProgressBar("Copying file...");
-                progressDialog.open();
-                Helper::setProgress(progressDialog, 0, filesize);
+                //Test the combination
+                if (src_isFile) {
 
-                //Open the source and destination filepaths
-                int fd_src = PS::open(filepath_src, O_RDONLY, 0);
-                int fd_dst = PS::open(filepath_dst, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO);
-
-                size_t offset = 0;
-                size_t bufferSize = 8192;
-                char buffer[bufferSize];
-
-                client.printf("Copying file please wait...\r\n");
-
-                //Copy the file in chunks
-                uint32_t updateBar = 0;
-                while (true) {
-                    size_t read_count = PS::readAll(fd_src, buffer, bufferSize);
-                    size_t write_count;
-                    offset += read_count;
-
-                    //Adjust buffer if EOF
-                    if (read_count < bufferSize) {
-                        PS::writeAll(fd_dst, buffer, read_count);
-                        break;
+                    //Add source filename to the destination if no filename is provided
+                    if (!dst_isFile) {
+                        int pointer = 0;
+                        char filename[128] = "";
+                        for (int i = PS2::lastIndexOf(filepath_src, '/') + 1; i < PS2::strlen(filepath_src); i++) {
+                            filename[pointer] = filepath_src[i];
+                            pointer++;
+                        }
+                        PS2::strcat(filepath_dst, filename);
                     }
-                    else
-                        write_count = PS::writeAll(fd_dst, buffer, bufferSize);
 
-                    //Break if the directory is read only
-                    if (read_count != write_count)
-                        break;
+                    client.printf("Copying file please wait...\r\n");
 
-                    if (updateBar == UPLOAD_BAR_UPDATE_FREQUENCY) {
-                        if (filesize != 0)
-                            Helper::setProgress(progressDialog, offset, filesize);
-                        updateBar = 0;
+                    //Test copy result
+                    switch (Helper::copyFile(directory, filepath_src, filepath_dst)) {
+                        case 1:
+                            client.printf("The file was copied successfully!\r\n");
+                            break;
+                        case 0:
+                            client.printf(
+                                    "There was an error while copying the file.\r\nMaybe the destination directory is read only?\r\n");
+                            break;
                     }
-                    updateBar++;
+                } else {
+
+                    //Test destination for directory
+                    if (!dst_isFile) {
+                        client.printf("WARNING\r\nYou are trying to copy a directory. This is not supported yet.\r\nLook in the source and enable this experimental feature if you want to.\r\n");
+
+                        //client.printf("WARNING\r\nThis feature is highly experimental!\r\nStuff WILL break. Use at your own risk!\r\n\r\n");
+                        //if (Helper::copyDirectory(directory, filepath_src, filepath_dst))
+                        //   client.printf("The directory was copied successfully!\r\n");
+                        //else
+                        //    client.printf("There was an error while copying the directory.\r\nMaybe the destination directory is read only?\r\n");
+                    } else {
+                        client.printf("The source is a directory but the given destination is a file!\r\n");
+                    }
                 }
-
-                progressDialog.setValue(100);
-                progressDialog.close();
-                PS::Sce::MsgDialog::Terminate();
             } else {
-                client.printf("The destination filepath is not valid!\r\n");
+                client.printf("The destination filepath/directory is not valid!\r\n");
             }
         } else {
-            client.printf("The source filepath is not valid!\r\n");
-        }
-
-        //Check if the file copied successfully
-        if (Helper::isValidMultipleDirectoryFile(directory, dest) == 0) {
-            client.printf("There was an error while copying the file.\r\nMaybe the destination directory is read only?\r\n");
+            client.printf("The source filepath/directory is not valid!\r\n");
         }
     }
 }
@@ -353,8 +461,7 @@ void Execute::mv(PS::TcpClient client, const char *directory, const char *source
                     if (read_count < bufferSize) {
                         PS::writeAll(fd_dst, buffer, read_count);
                         break;
-                    }
-                    else
+                    } else
                         write_count = PS::writeAll(fd_dst, buffer, bufferSize);
 
                     //Break if the directory is read only
@@ -381,7 +488,8 @@ void Execute::mv(PS::TcpClient client, const char *directory, const char *source
 
         //Check if the file moved successfully
         if (Helper::isValidMultipleDirectoryFile(directory, dest) == 0) {
-            client.printf("There was an error while moving the file.\r\nMaybe the destination directory is read only?\r\n");
+            client.printf(
+                    "There was an error while moving the file.\r\nMaybe the destination directory is read only?\r\n");
         } else {
             PS::unlink(filepath_src);
         }
@@ -390,10 +498,10 @@ void Execute::mv(PS::TcpClient client, const char *directory, const char *source
 
 void Execute::help(PS::TcpClient client) {
     client.printf(
-            "Available commands:\r\n - ls - Prints the content of the current directory\r\n - cd - Changes the current working directory\r\n - cp - Copies a file with the specified filepath or filename to the specified filepath\r\n - mv - Moves a file with the specified filepath or filename to the specified filepath\r\n - rm - Deletes a file with the specified filepath or filename\r\n - pwd - Prints the current working directory\r\n - notification - Displays a notification with your desired message\r\n - upload - Uploads a file to the specified filepath\r\n - download - Download a file to your local machine\r\n - play - Play a PS2 ISO with the specified filepath\r\n - exit - Closes the Server\r\n");
+            "Available commands:\r\n - ls - Prints the content of the current directory\r\n - cd - Changes the current working directory\r\n - cp - Copies a file with the specified filepath or filename to the specified filepath\r\n - mv - Moves a file with the specified filepath or filename to the specified filepath\r\n - rm - Deletes a file/directory with the specified path or filename\r\n - mkdir - Creates a new directory\r\n - pwd - Prints the current working directory\r\n - notification - Displays a notification with your desired message\r\n - upload - Uploads a file to the specified filepath\r\n - download - Download a file to your local machine\r\n - play - Play a PS2 ISO with the specified filepath\r\n - exit - Closes the Server\r\n");
 }
 
-void Execute::cd(PS::TcpClient client, char directory[128], char new_directory[128]) {
+void Execute::cd(PS::TcpClient client, char directory[256], char new_directory[256]) {
     if (PS2::strcmp(new_directory, "") == 0) {
         //Print help for cd
         client.printf("Syntax: cd \"Directory name here\"");
@@ -402,19 +510,19 @@ void Execute::cd(PS::TcpClient client, char directory[128], char new_directory[1
         client.printf("\r\n");
     } else {
         //Create temporary new directory char
-        char temp[128] = "";
+        char temp[512] = "";
         PS2::strcat(temp, directory);
         PS2::strcat(temp, new_directory);
 
         //Check for multiple directories
-        int index[10];
+        int index[20];
 
-        for (int i = 0; i < 10; i++) {
-            index[i] = 128;
+        for (int i = 0; i < 20; i++) {
+            index[i] = 512;
         }
 
         int howMany = 0;
-        char toTest[128] = "";
+        char toTest[512] = "";
         PS2::strcat(toTest, new_directory);
 
         //Get indexes of possibly multiple "/"
