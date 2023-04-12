@@ -24,7 +24,7 @@ void main() {
         PS::TcpClient client = server.accept();
 
         // Send messages
-        client.printf("Welcome to PS-PSH! v0.1.1\r\n");
+        client.printf("Welcome to PS-PSH! v0.1.2\r\n");
         client.printf("Twitter: twitter.com/aladie11\r\n\r\n");
 
         //Set initial directory
@@ -81,13 +81,13 @@ void main() {
                         } else if (PS2::strcmp(buildCommand, "pwd") == 0) {
                             Execute::pwd(client, directory);
                         } else if (PS2::strcmp(buildCommand, "rm") == 0) {
-                            Execute::rm(client, directory, buildParam1);
+                            Execute::rm(client, directory, buildParam1, buildParam2);
                         } else if (PS2::strcmp(buildCommand, "cd") == 0) {
                             Execute::cd(client, directory, buildParam1);
                         } else if (PS2::strcmp(buildCommand, "cp") == 0) {
-                            Execute::cp(client, directory, buildParam1, buildParam2);
+                            Execute::cp_or_mv(client, directory, buildParam1, buildParam2, false);
                         } else if (PS2::strcmp(buildCommand, "mv") == 0) {
-                            Execute::mv(client, directory, buildParam1, buildParam2);
+                            Execute::cp_or_mv(client, directory, buildParam1, buildParam2, true);
                         } else if (PS2::strcmp(buildCommand, "mkdir") == 0) {
                             Execute::mkdir(client, directory, buildParam1);
                         } else if (PS2::strcmp(buildCommand, "help") == 0) {

@@ -2,7 +2,7 @@
 
 bool Helper::isFile(const char *directory, const char *filename) {
     //Iterate through the current directory and check if the "filename" is actually a file
-    int fd = PS::open(directory, 0, 0);
+    int fd = PS::open(directory, O_RDONLY, 0);
 
     if (fd > 0) {
         char buffer[1024];
@@ -17,24 +17,25 @@ bool Helper::isFile(const char *directory, const char *filename) {
                 nread -= dent->d_reclen;
                 if (nread < 0)
                     break;
-                if (dent->d_type == DT_REG && (PS2::strcmp(filename, dent->d_name) == 0))
+                if (dent->d_type == DT_REG && (PS2::strcmp(filename, dent->d_name) == 0)) {
+                    PS::close(fd);
                     return true;
+                }
                 dent = (struct dirent *) ((char *) dent + dent->d_reclen);
 
             }
 
             memset(buffer, 0, sizeof(buffer));
-
-
         }
     }
+
     PS::close(fd);
     return false;
 }
 
 bool Helper::isDirectory(const char *directory, const char *dirname) {
     //Iterate through the current directory and check if the "filename" is actually a directory
-    int fd = PS::open(directory, 0, 0);
+    int fd = PS::open(directory, O_RDONLY, 0);
 
     if (fd > 0) {
         char buffer[1024];
@@ -49,17 +50,21 @@ bool Helper::isDirectory(const char *directory, const char *dirname) {
                 nread -= dent->d_reclen;
                 if (nread < 0)
                     break;
-                if (dent->d_type == DT_DIR && (PS2::strcmp(dirname, dent->d_name) == 0))
-                    return true;
+                if (dent->d_type == DT_DIR && (PS2::strcmp(dirname, dent->d_name) == 0)) {
+                    //Skip /. and /..
+                    if (PS2::strcmp(dent->d_name, ".") != 0 && PS2::strcmp(dent->d_name, "..") != 0) {
+                        PS::close(fd);
+                        return true;
+                    }
+                }
                 dent = (struct dirent *) ((char *) dent + dent->d_reclen);
 
             }
 
             memset(buffer, 0, sizeof(buffer));
-
-
         }
     }
+
     PS::close(fd);
     return false;
 }
@@ -120,45 +125,57 @@ bool Helper::copyFile(const char *directory, const char *source, const char *des
     return true;
 }
 
-
-//HIGHLY EXPERIMENTAL -> WORK IN PROGRESS
-//USE WITH CAUTION
-bool Helper::copyDirectory(const char *directory, const char *source, const char *destination) {
+bool Helper::copyDirectory(const char *directory, const char *source, const char *destination, bool new_name) {
     //Get source directory name
     char tmpSource[512] = "";
-    PS2::strcat(tmpSource, source);
-
-    char name[128] = "";
-    int pointer = 0;
-
-    //Check if there is a "/" at the end
-    if (tmpSource[PS2::strlen(tmpSource) - 1] == '/')
-        //Remove "/" at the end
-        tmpSource[PS2::strlen(tmpSource) - 1] = '\0';
-
-    //Get directory name
-    for (int i = PS2::lastIndexOf(tmpSource, '/') + 1; i < PS2::strlen(tmpSource); i++) {
-        if (tmpSource[i] != '/') {
-            name[pointer] = tmpSource[i];
-            pointer++;
-        }
-    }
-
-    //Add "/" at the end
-    PS2::strcat(tmpSource, "/");
-    PS2::strcat(name, "/");
-
-    //Create new directory path
     char tempDestination[512] = "";
-    PS2::strcat(tempDestination, destination);
 
-    //Check if there is no "/" at the end
-    if (destination[PS2::strlen(destination) - 1] != '/')
+    //Check if a new name is provided
+    if (!new_name) {
+        PS2::strcat(tmpSource, source);
+
+        char name[128] = "";
+        int pointer = 0;
+
+        //Check if there is a "/" at the end
+        if (tmpSource[PS2::strlen(tmpSource) - 1] == '/')
+            //Remove "/" at the end
+            tmpSource[PS2::strlen(tmpSource) - 1] = '\0';
+
+        //Get directory name
+        for (int i = PS2::lastIndexOf(tmpSource, '/') + 1; i < PS2::strlen(tmpSource); i++) {
+            if (tmpSource[i] != '/') {
+                name[pointer] = tmpSource[i];
+                pointer++;
+            }
+        }
+
         //Add "/" at the end
-        PS2::strcat(tempDestination, "/");
+        PS2::strcat(tmpSource, "/");
+        PS2::strcat(name, "/");
 
-    //Add directory name
-    PS2::strcat(tempDestination, name);
+        //Create new directory path
+        PS2::strcat(tempDestination, destination);
+
+        //Check if there is no "/" at the end
+        if (destination[PS2::strlen(destination) - 1] != '/')
+            //Add "/" at the end
+            PS2::strcat(tempDestination, "/");
+
+        //Add directory name
+        PS2::strcat(tempDestination, name);
+    } else {
+        PS2::strcat(tmpSource, source);
+
+        //Check if there is no "/" at the end
+        if (source[PS2::strlen(source) - 1] != '/')
+            //Add "/" at the end
+            PS2::strcat(tmpSource, "/");
+
+        //Create new directory path
+        PS2::strcat(tempDestination, destination);
+        PS2::strcat(tempDestination, "/");
+    }
 
     //Create destination folder if it does not exist
     if (isValidMultipleDirectoryDirectory(directory, tempDestination) == 0) {
@@ -170,53 +187,12 @@ bool Helper::copyDirectory(const char *directory, const char *source, const char
             return false;
 
         //Iterate through the source directory and check for files
-        int fd = PS::open(tmpSource, 0, 0);
+        int fd = PS::open(tmpSource, O_RDONLY, 0);
 
         if (fd > 0) {
             char buffer[1024];
             int nread = 0;
             while ((nread = PS::getdents(fd, buffer, sizeof(buffer))) > 0) {
-
-                struct dirent *dent = (struct dirent *) buffer;
-
-                while (dent->d_fileno) {
-
-                    if (dent->d_reclen == 0)
-                        break;
-                    nread -= dent->d_reclen;
-                    if (nread < 0)
-                        break;
-                    if (dent->d_type == DT_REG) {
-
-                        //Build source filepath
-                        char sourceFilePath[512] = "";
-                        PS2::strcat(sourceFilePath, tmpSource);
-                        PS2::strcat(sourceFilePath, dent->d_name);
-
-                        //Build destination filepath
-                        char destinationFilePath[512] = "";
-                        PS2::strcat(destinationFilePath, tempDestination);
-                        PS2::strcat(destinationFilePath, dent->d_name);
-
-                        //Finally actually copy the file
-                        if (!copyFile(directory, sourceFilePath, destinationFilePath))
-                            return false;
-                    }
-                    dent = (struct dirent *) ((char *) dent + dent->d_reclen);
-
-                }
-                memset(buffer, 0, sizeof(buffer));
-            }
-        }
-        PS::close(fd);
-
-        //Iterate through the source directory and check for directories
-        int fd1 = PS::open(tmpSource, 0, 0);
-
-        if (fd > 0) {
-            char buffer[1024];
-            int nread = 0;
-            while ((nread = PS::getdents(fd1, buffer, sizeof(buffer))) > 0) {
 
                 struct dirent *dent = (struct dirent *) buffer;
 
@@ -236,8 +212,27 @@ bool Helper::copyDirectory(const char *directory, const char *source, const char
                             PS2::strcat(sourceDirectoryPath, dent->d_name);
 
                             //Finally actually copy the directory
-                            if (!copyDirectory(directory, sourceDirectoryPath, tempDestination))
+                            if (!copyDirectory(directory, sourceDirectoryPath, tempDestination, false)) {
+                                PS::close(fd);
                                 return false;
+                            }
+                        }
+                    }
+                    else if (dent->d_type == DT_REG) {
+                        //Build source filepath
+                        char sourceFilePath[512] = "";
+                        PS2::strcat(sourceFilePath, tmpSource);
+                        PS2::strcat(sourceFilePath, dent->d_name);
+
+                        //Build destination filepath
+                        char destinationFilePath[512] = "";
+                        PS2::strcat(destinationFilePath, tempDestination);
+                        PS2::strcat(destinationFilePath, dent->d_name);
+
+                        //Finally actually copy the file
+                        if (!copyFile(directory, sourceFilePath, destinationFilePath)) {
+                            PS::close(fd);
+                            return false;
                         }
                     }
                     dent = (struct dirent *) ((char *) dent + dent->d_reclen);
@@ -246,10 +241,82 @@ bool Helper::copyDirectory(const char *directory, const char *source, const char
                 memset(buffer, 0, sizeof(buffer));
             }
         }
-        PS::close(fd1);
+        PS::close(fd);
     }
 
     return true;
+}
+
+bool Helper::deleteDirectory(const char *dirpath) {
+    char tmpSource[256] = "";
+
+    PS2::strcat(tmpSource, dirpath);
+
+    //Check if there is no "/" at the end
+    if (dirpath[PS2::strlen(dirpath) - 1] != '/')
+        //Add "/" at the end
+        PS2::strcat(tmpSource, "/");
+
+    //Iterate through the source directory and check for directories
+    int fd = PS::open(tmpSource, O_RDONLY, 0);
+
+    if (fd > 0) {
+        char buffer[1024];
+        int nread = 0;
+        while ((nread = PS::getdents(fd, buffer, sizeof(buffer))) > 0) {
+
+            struct dirent *dent = (struct dirent *) buffer;
+
+            while (dent->d_fileno) {
+
+                if (dent->d_reclen == 0)
+                    break;
+                nread -= dent->d_reclen;
+                if (nread < 0)
+                    break;
+                if (dent->d_type == DT_DIR) {
+                    //Skip /. and /..
+                    if (PS2::strcmp(dent->d_name, ".") != 0 && PS2::strcmp(dent->d_name, "..") != 0) {
+                        //Build temp directory path
+                        char temp[256] = "";
+                        PS2::strcat(temp, tmpSource);
+                        PS2::strcat(temp, dent->d_name);
+
+                        //Recursively delete directories
+                        if (!deleteDirectory(temp)) {
+                            PS::close(fd);
+                            return false;
+                        }
+                    }
+                } else if (dent->d_type == DT_REG) {
+                    //Build source filepath
+                    char filePath[256] = "";
+                    PS2::strcat(filePath, tmpSource);
+                    PS2::strcat(filePath, dent->d_name);
+
+                    //Delete the file
+                    PS::unlink(filePath);
+
+                    //Check if deleted successfully
+                    if (isValidMultipleDirectoryFile("", filePath) != 0) {
+                        PS::close(fd);
+                        return false;
+                    }
+                }
+                dent = (struct dirent *) ((char *) dent + dent->d_reclen);
+
+            }
+            memset(buffer, 0, sizeof(buffer));
+        }
+    }
+    PS::close(fd);
+
+    //Actually delete the directory
+    PS::rmdir(tmpSource);
+
+    if (isValidMultipleDirectoryDirectory("", tmpSource) == 0)
+        return true;
+    return false;
 }
 
 void Helper::playPS2ISO(const char *gamepath, const char *configpath) {

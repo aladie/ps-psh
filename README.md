@@ -13,9 +13,9 @@ Known working methods:
 ```
 ls - Lists all folders and files in the current working directory
 cd <Directory> - Change the current working directory
-cp <Source Filepath> <Destination Filepath> - Copy a file
-mv <Source Filepath> <Destination Filepath> - Move a file
-rm <Filepath + Filename> - Delete a file/directory
+cp <Source Path> <Destination Path> - Copy a file or directory
+mv <Source Path> <Destination Path> - Move a file or directory
+rm <OPTIONAL: -r> <Filepath + Filename> - Delete a file or directory
 mkdir - <Path + Name> - Creates a new directory
 pwd - Print the current working directory
 notification <Notification text> - Display a notification with your text
@@ -29,16 +29,19 @@ To download a file from the server use the "[PS-PSH File-Receiver](https://githu
 
 Note: All commands requiring a filepath will also work with only a filename provided. -> The server will search for the file in the current working directory.
 
+# Directories with write privileges
+Most of the directories are sadly read-only. However there are some known and working directories:
+
+- `/av_contents/content_tmp/` _Will be automatically cleared after closing the game._
+- `/temp0/` _The contents of this directory will not be deleted after closing the game or restarting the console._
+
 # Known Issues/Limitations
-- You cannot write to all folders in the sandbox. -> Known and working: `/av_contents/content_tmp/` and `/temp0/`. 
-- "/temp0/" will also store the files after a reboot/restart of OKAGE and/or the PS4/PS5. _Not 100% sure you have to test for yourself_
 - After downloading/uploading a file and directly trying to download/upload another file can fail. -> Workaround: wait a couple of seconds
 - The server can crash after resending/restarting the server after exiting the server with the exit command -> Workaround: reopen OKAGE
 
 # Next Steps
 - (Download) Support the transmission of multiple files (Directories)
 - Add more commands
-- The ability to copy/move directories _-> There is a highly experimental version implemented in the source. Activate/Uncomment at your own risk!_
 
 
 Thanks to @McCaulay for providing the mast1c0re sdk and samples.

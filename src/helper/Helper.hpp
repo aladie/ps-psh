@@ -11,7 +11,8 @@ public:
     static bool isFile(const char *directory, const char *filename);
     static bool isDirectory(const char *directory, const char *dirname);
     static bool copyFile(const char *directory, const char *source, const char *destination);
-    static bool copyDirectory(const char *directory, const char *source, const char *destination);
+    static bool copyDirectory(const char *directory, const char *source, const char *destination, bool new_name);
+    static bool deleteDirectory(const char *dirpath);
     static void playPS2ISO(const char *gamepath, const char *confpath);
     static int firstIndexOf(const char *string, char comp);
     static int isValidMultipleDirectoryFile(const char *directory, const char *multiple_directory_file);

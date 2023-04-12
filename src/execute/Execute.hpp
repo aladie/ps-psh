@@ -13,10 +13,9 @@ public:
     static void download(PS::TcpClient client, const char *directory, const char *filename, int UPLOADER_PORT);
     static void play(PS::TcpClient client, const char *directory, const char *filepath, const char *configpath);
     static void pwd(PS::TcpClient client, const char *directory);
-    static void rm(PS::TcpClient client, const char *directory, const char *filepath);
+    static void rm(PS::TcpClient client, const char *directory, const char *filepath_or_arg, const char *directoryPath);
     static void mkdir(PS::TcpClient client, const char *directory, const char *filepath);
     static void cd(PS::TcpClient client, char directory[256], char new_directory[256]);
-    static void cp(PS::TcpClient client, const char *directory, const char *source, const char *dest);
-    static void mv(PS::TcpClient client, const char *directory, const char *source, const char *dest);
+    static void cp_or_mv(PS::TcpClient client, const char *directory, const char *source, const char *dest, bool move);
     static void help(PS::TcpClient client);
 };
