@@ -3,7 +3,7 @@
 
 #define SERVER_PORT 9030
 #define DOWNLOADER_PORT 9045
-#define UPLOADER_PORT 9045
+#define UPLOADER_PORT 9046
 
 
 void main() {
@@ -24,7 +24,7 @@ void main() {
         PS::TcpClient client = server.accept();
 
         // Send messages
-        client.printf("Welcome to PS-PSH! v0.1.2\r\n");
+        client.printf("Welcome to PS-PSH! v0.1.3\r\n");
         client.printf("Twitter: twitter.com/aladie11\r\n\r\n");
 
         //Set initial directory

@@ -89,33 +89,59 @@ void Execute::upload(PS::TcpClient client, const char *directory, const char *fi
 void Execute::download(PS::TcpClient client, const char *directory, const char *filepath, int UPLOADER_PORT) {
     if (PS2::strcmp(filepath, "") == 0) {
         //Print help for rm
-        client.printf("Syntax: download \"Filepath/name here\"\r\n");
+        client.printf("Syntax: download \"Filepath/Directory path here\"\r\n");
     } else {
         char temp[128] = "";
+        bool isFile = false;
 
         //Validate filepath
-        if (Helper::isValidMultipleDirectoryFile(directory, filepath) == 1) {
-            //Build temp filepath
-            PS2::strcat(temp, directory);
-            PS2::strcat(temp, filepath);
-        } else if (Helper::isValidMultipleDirectoryFile(directory, filepath) == 2) {
-            //Build temp filepath
-            PS2::strcat(temp, filepath);
+        switch (Helper::isValidMultipleDirectoryFile(directory, filepath)) {
+            case 1:
+                //Build temp filepath
+                PS2::strcat(temp, directory);
+                PS2::strcat(temp, filepath);
+                isFile = true;
+                break;
+            case 2:
+                //Build temp filepath
+                PS2::strcat(temp, filepath);
+                isFile = true;
+                break;
+            case 0:
+                switch (Helper::isValidMultipleDirectoryDirectory(directory, filepath)) {
+                    case 1:
+                        //Build temp directory path
+                        PS2::strcat(temp, directory);
+                        PS2::strcat(temp, filepath);
+                        break;
+                    case 2:
+                        //Build temp directory path
+                        PS2::strcat(temp, filepath);
+                        break;
+                }
         }
+
 
         //Continue if filepath was valid
         if (PS2::strcmp(temp, "") != 0) {
+
+            // Print disclaimer
+            if (!isFile)
+                client.printf("Uploading directories is in a very experimental state!\r\nBe mindful of possible corrupt files!\r\n\r\n");
+            else
+                client.printf("This version of PS-PSH uses a very experimental method of transmitting files.\r\nIf you experience corrupt files, please consider downgrading to PS-PSH v0.1.0!!\r\n\r\n");
+
             client.printf(
-                    "Connect and download the file with the \"PS-PSH File Receiver\"\r\nOr use your own tool on the TCP port 9045");
-            client.printf("\r\n");
+                    "Connect to the console with the \"PS-PSH File Receiver\" and download the file/directory.\r\nhttps://github.com/aladie/ps-psh-file-receiver\r\n\r\n");
 
             //Download file
-            if (!Uploader::upload(temp, UPLOADER_PORT)) {
-                PS::notification("Failed to listen on port 9045.\nTry again in 1 minute.");
+            if (!Uploader::uploadHandler(client, temp, UPLOADER_PORT, isFile)) {
+                client.printf("(ERROR) Failed to listen on port 9046. Try again in 1 minute.\r\n");
+                PS::notification("Failed to listen on port 9046.\nTry again in 1 minute.");
                 return;
             }
         } else {
-            client.printf("No such file: ");
+            client.printf("No such file/directory: ");
             client.printf(filepath);
             client.printf("\r\n");
         }

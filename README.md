@@ -20,7 +20,7 @@ mkdir - <Path + Name> - Creates a new directory
 pwd - Print the current working directory
 notification <Notification text> - Display a notification with your text
 upload <Filepath + Filename> - Upload a file to the PS4/PS5 to the specified filepath
-download <Filepath + Filename> - Download a file to the local machine
+download <File-/Directorypath + File-/Directoryname> - Download a file/directory to the local machine
 play <Filepath + Filename> <OPTIONAL: Config Filepath + Filename> - Play a PS2-ISO with or without a config file
 exit - Terminate the server
 ```
@@ -40,7 +40,7 @@ Most of the directories are sadly read-only. However there are some known and wo
 - The server can crash after resending/restarting the server after exiting the server with the exit command -> Workaround: reopen OKAGE
 
 # Next Steps
-- (Download) Support the transmission of multiple files (Directories)
+- (Download) Improve the currently experimental state of downloading directories
 - Add more commands
 
 

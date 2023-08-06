@@ -10,7 +10,10 @@
 class Uploader
 {
 public:
-    static bool upload(const char* filepath, uint16_t port);
+    static bool uploadHandler(PS::TcpClient client, const char *path, uint16_t port, bool isFile);
 private:
+    static void uploadFile(const char* filepath, PS::TcpClient data_client, PS::TcpClient console);
+    static void uploadDirectory(const char* dirpath, PS::TcpClient data_client, PS::TcpClient console);
     static void setProgress(PS::Sce::MsgDialogProgressBar dialog, size_t uploaded, size_t total);
+    static void sizeTtoCharArray(size_t x, char output[]);
 };
