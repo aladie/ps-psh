@@ -24,7 +24,7 @@ void main() {
         PS::TcpClient client = server.accept();
 
         // Send messages
-        client.printf("Welcome to PS-PSH! v0.1.3\r\n");
+        client.printf("Welcome to PS-PSH! v0.1.5\r\n");
         client.printf("Twitter: twitter.com/aladie11\r\n\r\n");
 
         //Set initial directory
